@@ -13,3 +13,7 @@
 -esym(578, ah)
 -esym(578, de)
 
+// turn off thread mutex has been locked but not unlocked, and vice verse
+-efunc(454, ssl_locking_callback)
+-efunc(455, ssl_locking_callback)
+-efunc(456, ssl_locking_callback)

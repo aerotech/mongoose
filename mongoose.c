@@ -874,7 +874,7 @@ static const char *next_option(const char *list, struct vec *val,
   return list;
 }
 
-static int match_prefix(const char *pattern, int pattern_len, const char *str) {
+static int match_prefix(const char *pattern, unsigned int pattern_len, const char *str) {
   const char *or_str;
   int i, j, len, res;
 
@@ -2391,7 +2391,7 @@ static char *mg_fgets(char *buf, size_t size, struct file *filep, char **p) {
 
   if (filep->membuf != NULL && *p != NULL) {
     eof = (char*)memchr(*p, '\n', &filep->membuf[filep->size] - *p);
-    len = (size_t) (eof - *p) > size - 1 ? size - 1 : (size_t) (eof - *p);
+    len = (NULL == eof || (size_t) (eof - *p) > size - 1) ? size - 1 : (size_t) (eof - *p);
     memcpy(buf, *p, len);
     buf[len] = '\0';
     *p = eof;
@@ -3262,7 +3262,7 @@ static void prepare_cgi_environment(struct mg_connection *conn,
   slash = strrchr(conn->request_info.uri, '/');
   if ((s = strrchr(prog, '/')) == NULL)
     s = prog;
-  addenv(blk, "SCRIPT_NAME=%.*s%s", (int) (slash - conn->request_info.uri),
+  addenv(blk, "SCRIPT_NAME=%.*s%s", (int) (slash - conn->request_info.uri), //lint !e613 slash can be null if we do not find '/'
          conn->request_info.uri, s);
 
   addenv(blk, "SCRIPT_FILENAME=%s", prog);
@@ -3674,6 +3674,8 @@ static void send_ssi_file(struct mg_connection *conn, const char *path,
     cry(conn, "SSI #include level is too deep (%s)", path);
     return;
   }
+
+  memset(buf, 0, sizeof(buf));
 
   in_ssi_tag = len = offset = 0;
   while ((ch = mg_fgetc(filep, offset)) != EOF) {
@@ -5053,7 +5055,7 @@ static int consume_socket(struct mg_context *ctx, struct socket *sp) {
   // If we're stopping, sq_head may be equal to sq_tail.
   if (ctx->sq_head > ctx->sq_tail) {
     // Copy socket from the queue and increment tail
-    *sp = ctx->queue[ctx->sq_tail % ARRAY_SIZE(ctx->queue)];
+    *sp = ctx->queue[ctx->sq_tail % (int)ARRAY_SIZE(ctx->queue)];
     ctx->sq_tail++;
     DEBUG_TRACE(("grabbed socket %d, going busy", sp->sock));
 
@@ -5134,7 +5136,7 @@ static void produce_socket(struct mg_context *ctx, const struct socket *sp) {
 
   if (ctx->sq_head - ctx->sq_tail < (int) ARRAY_SIZE(ctx->queue)) {
     // Copy socket to the queue and increment head
-    ctx->queue[ctx->sq_head % ARRAY_SIZE(ctx->queue)] = *sp;
+    ctx->queue[ctx->sq_head % (int)ARRAY_SIZE(ctx->queue)] = *sp;
     ctx->sq_head++;
     DEBUG_TRACE(("queued socket %d", sp->sock));
   }
