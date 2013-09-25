@@ -1486,12 +1486,12 @@ static int64_t push(FILE *fp, SOCKET sock, SSL *ssl, const char *buf,
     } else
 #endif
       if (fp != NULL) {
-      n = (int) fwrite(buf + sent, 1, (size_t) k, fp);
-      if (ferror(fp))
-        n = -1;
-    } else {
-      n = send(sock, buf + sent, (size_t) k, MSG_NOSIGNAL);
-    }
+        n = (int) fwrite(buf + sent, 1, (size_t) k, fp);
+        if (ferror(fp))
+          n = -1;
+      } else {
+        n = send(sock, buf + sent, (size_t) k, MSG_NOSIGNAL);
+      }
 
     if (n <= 0)
       break;
@@ -1710,7 +1710,7 @@ int mg_get_var(const char *data, size_t data_len, const char *name,
     dst[0] = '\0';
 
     // data is "var1=val1&var2=val2...". Find variable first
-    for (p = data; p + name_len < e; p++) {
+    for (p = data; p + name_len < e; p++) { //lint !e440 irregularities in statements used
       if ((p == data || p[-1] == '&') && p[name_len] == '=' &&
           !mg_strncasecmp(name, p, name_len)) {
 
@@ -2085,73 +2085,73 @@ static void MD5Transform(uint32_t buf[4], uint32_t const in[16]) {
   c = buf[2];
   d = buf[3];
 
-  MD5STEP(F1, a, b, c, d, in[0] + 0xd76aa478, 7);
-  MD5STEP(F1, d, a, b, c, in[1] + 0xe8c7b756, 12);
-  MD5STEP(F1, c, d, a, b, in[2] + 0x242070db, 17);
-  MD5STEP(F1, b, c, d, a, in[3] + 0xc1bdceee, 22);
-  MD5STEP(F1, a, b, c, d, in[4] + 0xf57c0faf, 7);
-  MD5STEP(F1, d, a, b, c, in[5] + 0x4787c62a, 12);
-  MD5STEP(F1, c, d, a, b, in[6] + 0xa8304613, 17);
-  MD5STEP(F1, b, c, d, a, in[7] + 0xfd469501, 22);
-  MD5STEP(F1, a, b, c, d, in[8] + 0x698098d8, 7);
-  MD5STEP(F1, d, a, b, c, in[9] + 0x8b44f7af, 12);
-  MD5STEP(F1, c, d, a, b, in[10] + 0xffff5bb1, 17);
-  MD5STEP(F1, b, c, d, a, in[11] + 0x895cd7be, 22);
-  MD5STEP(F1, a, b, c, d, in[12] + 0x6b901122, 7);
-  MD5STEP(F1, d, a, b, c, in[13] + 0xfd987193, 12);
-  MD5STEP(F1, c, d, a, b, in[14] + 0xa679438e, 17);
-  MD5STEP(F1, b, c, d, a, in[15] + 0x49b40821, 22);
+  MD5STEP(F1, a, b, c, d, (in[0] + 0xd76aa478), 7);
+  MD5STEP(F1, d, a, b, c, (in[1] + 0xe8c7b756), 12);
+  MD5STEP(F1, c, d, a, b, (in[2] + 0x242070db), 17);
+  MD5STEP(F1, b, c, d, a, (in[3] + 0xc1bdceee), 22);
+  MD5STEP(F1, a, b, c, d, (in[4] + 0xf57c0faf), 7);
+  MD5STEP(F1, d, a, b, c, (in[5] + 0x4787c62a), 12);
+  MD5STEP(F1, c, d, a, b, (in[6] + 0xa8304613), 17);
+  MD5STEP(F1, b, c, d, a, (in[7] + 0xfd469501), 22);
+  MD5STEP(F1, a, b, c, d, (in[8] + 0x698098d8), 7);
+  MD5STEP(F1, d, a, b, c, (in[9] + 0x8b44f7af), 12);
+  MD5STEP(F1, c, d, a, b, (in[10] + 0xffff5bb1), 17);
+  MD5STEP(F1, b, c, d, a, (in[11] + 0x895cd7be), 22);
+  MD5STEP(F1, a, b, c, d, (in[12] + 0x6b901122), 7);
+  MD5STEP(F1, d, a, b, c, (in[13] + 0xfd987193), 12);
+  MD5STEP(F1, c, d, a, b, (in[14] + 0xa679438e), 17);
+  MD5STEP(F1, b, c, d, a, (in[15] + 0x49b40821), 22);
 
-  MD5STEP(F2, a, b, c, d, in[1] + 0xf61e2562, 5);
-  MD5STEP(F2, d, a, b, c, in[6] + 0xc040b340, 9);
-  MD5STEP(F2, c, d, a, b, in[11] + 0x265e5a51, 14);
-  MD5STEP(F2, b, c, d, a, in[0] + 0xe9b6c7aa, 20);
-  MD5STEP(F2, a, b, c, d, in[5] + 0xd62f105d, 5);
-  MD5STEP(F2, d, a, b, c, in[10] + 0x02441453, 9);
-  MD5STEP(F2, c, d, a, b, in[15] + 0xd8a1e681, 14);
-  MD5STEP(F2, b, c, d, a, in[4] + 0xe7d3fbc8, 20);
-  MD5STEP(F2, a, b, c, d, in[9] + 0x21e1cde6, 5);
-  MD5STEP(F2, d, a, b, c, in[14] + 0xc33707d6, 9);
-  MD5STEP(F2, c, d, a, b, in[3] + 0xf4d50d87, 14);
-  MD5STEP(F2, b, c, d, a, in[8] + 0x455a14ed, 20);
-  MD5STEP(F2, a, b, c, d, in[13] + 0xa9e3e905, 5);
-  MD5STEP(F2, d, a, b, c, in[2] + 0xfcefa3f8, 9);
-  MD5STEP(F2, c, d, a, b, in[7] + 0x676f02d9, 14);
-  MD5STEP(F2, b, c, d, a, in[12] + 0x8d2a4c8a, 20);
+  MD5STEP(F2, a, b, c, d, (in[1] + 0xf61e2562), 5);
+  MD5STEP(F2, d, a, b, c, (in[6] + 0xc040b340), 9);
+  MD5STEP(F2, c, d, a, b, (in[11] + 0x265e5a51), 14);
+  MD5STEP(F2, b, c, d, a, (in[0] + 0xe9b6c7aa), 20);
+  MD5STEP(F2, a, b, c, d, (in[5] + 0xd62f105d), 5);
+  MD5STEP(F2, d, a, b, c, (in[10] + 0x02441453), 9);
+  MD5STEP(F2, c, d, a, b, (in[15] + 0xd8a1e681), 14);
+  MD5STEP(F2, b, c, d, a, (in[4] + 0xe7d3fbc8), 20);
+  MD5STEP(F2, a, b, c, d, (in[9] + 0x21e1cde6), 5);
+  MD5STEP(F2, d, a, b, c, (in[14] + 0xc33707d6), 9);
+  MD5STEP(F2, c, d, a, b, (in[3] + 0xf4d50d87), 14);
+  MD5STEP(F2, b, c, d, a, (in[8] + 0x455a14ed), 20);
+  MD5STEP(F2, a, b, c, d, (in[13] + 0xa9e3e905), 5);
+  MD5STEP(F2, d, a, b, c, (in[2] + 0xfcefa3f8), 9);
+  MD5STEP(F2, c, d, a, b, (in[7] + 0x676f02d9), 14);
+  MD5STEP(F2, b, c, d, a, (in[12] + 0x8d2a4c8a), 20);
 
-  MD5STEP(F3, a, b, c, d, in[5] + 0xfffa3942, 4);
-  MD5STEP(F3, d, a, b, c, in[8] + 0x8771f681, 11);
-  MD5STEP(F3, c, d, a, b, in[11] + 0x6d9d6122, 16);
-  MD5STEP(F3, b, c, d, a, in[14] + 0xfde5380c, 23);
-  MD5STEP(F3, a, b, c, d, in[1] + 0xa4beea44, 4);
-  MD5STEP(F3, d, a, b, c, in[4] + 0x4bdecfa9, 11);
-  MD5STEP(F3, c, d, a, b, in[7] + 0xf6bb4b60, 16);
-  MD5STEP(F3, b, c, d, a, in[10] + 0xbebfbc70, 23);
-  MD5STEP(F3, a, b, c, d, in[13] + 0x289b7ec6, 4);
-  MD5STEP(F3, d, a, b, c, in[0] + 0xeaa127fa, 11);
-  MD5STEP(F3, c, d, a, b, in[3] + 0xd4ef3085, 16);
-  MD5STEP(F3, b, c, d, a, in[6] + 0x04881d05, 23);
-  MD5STEP(F3, a, b, c, d, in[9] + 0xd9d4d039, 4);
-  MD5STEP(F3, d, a, b, c, in[12] + 0xe6db99e5, 11);
-  MD5STEP(F3, c, d, a, b, in[15] + 0x1fa27cf8, 16);
-  MD5STEP(F3, b, c, d, a, in[2] + 0xc4ac5665, 23);
+  MD5STEP(F3, a, b, c, d, (in[5] + 0xfffa3942), 4);
+  MD5STEP(F3, d, a, b, c, (in[8] + 0x8771f681), 11);
+  MD5STEP(F3, c, d, a, b, (in[11] + 0x6d9d6122), 16);
+  MD5STEP(F3, b, c, d, a, (in[14] + 0xfde5380c), 23);
+  MD5STEP(F3, a, b, c, d, (in[1] + 0xa4beea44), 4);
+  MD5STEP(F3, d, a, b, c, (in[4] + 0x4bdecfa9), 11);
+  MD5STEP(F3, c, d, a, b, (in[7] + 0xf6bb4b60), 16);
+  MD5STEP(F3, b, c, d, a, (in[10] + 0xbebfbc70), 23);
+  MD5STEP(F3, a, b, c, d, (in[13] + 0x289b7ec6), 4);
+  MD5STEP(F3, d, a, b, c, (in[0] + 0xeaa127fa), 11);
+  MD5STEP(F3, c, d, a, b, (in[3] + 0xd4ef3085), 16);
+  MD5STEP(F3, b, c, d, a, (in[6] + 0x04881d05), 23);
+  MD5STEP(F3, a, b, c, d, (in[9] + 0xd9d4d039), 4);
+  MD5STEP(F3, d, a, b, c, (in[12] + 0xe6db99e5), 11);
+  MD5STEP(F3, c, d, a, b, (in[15] + 0x1fa27cf8), 16);
+  MD5STEP(F3, b, c, d, a, (in[2] + 0xc4ac5665), 23);
 
-  MD5STEP(F4, a, b, c, d, in[0] + 0xf4292244, 6);
-  MD5STEP(F4, d, a, b, c, in[7] + 0x432aff97, 10);
-  MD5STEP(F4, c, d, a, b, in[14] + 0xab9423a7, 15);
-  MD5STEP(F4, b, c, d, a, in[5] + 0xfc93a039, 21);
-  MD5STEP(F4, a, b, c, d, in[12] + 0x655b59c3, 6);
-  MD5STEP(F4, d, a, b, c, in[3] + 0x8f0ccc92, 10);
-  MD5STEP(F4, c, d, a, b, in[10] + 0xffeff47d, 15);
-  MD5STEP(F4, b, c, d, a, in[1] + 0x85845dd1, 21);
-  MD5STEP(F4, a, b, c, d, in[8] + 0x6fa87e4f, 6);
-  MD5STEP(F4, d, a, b, c, in[15] + 0xfe2ce6e0, 10);
-  MD5STEP(F4, c, d, a, b, in[6] + 0xa3014314, 15);
-  MD5STEP(F4, b, c, d, a, in[13] + 0x4e0811a1, 21);
-  MD5STEP(F4, a, b, c, d, in[4] + 0xf7537e82, 6);
-  MD5STEP(F4, d, a, b, c, in[11] + 0xbd3af235, 10);
-  MD5STEP(F4, c, d, a, b, in[2] + 0x2ad7d2bb, 15);
-  MD5STEP(F4, b, c, d, a, in[9] + 0xeb86d391, 21);
+  MD5STEP(F4, a, b, c, d, (in[0] + 0xf4292244), 6);
+  MD5STEP(F4, d, a, b, c, (in[7] + 0x432aff97), 10);
+  MD5STEP(F4, c, d, a, b, (in[14] + 0xab9423a7), 15);
+  MD5STEP(F4, b, c, d, a, (in[5] + 0xfc93a039), 21);
+  MD5STEP(F4, a, b, c, d, (in[12] + 0x655b59c3), 6);
+  MD5STEP(F4, d, a, b, c, (in[3] + 0x8f0ccc92), 10);
+  MD5STEP(F4, c, d, a, b, (in[10] + 0xffeff47d), 15);
+  MD5STEP(F4, b, c, d, a, (in[1] + 0x85845dd1), 21);
+  MD5STEP(F4, a, b, c, d, (in[8] + 0x6fa87e4f), 6);
+  MD5STEP(F4, d, a, b, c, (in[15] + 0xfe2ce6e0), 10);
+  MD5STEP(F4, c, d, a, b, (in[6] + 0xa3014314), 15);
+  MD5STEP(F4, b, c, d, a, (in[13] + 0x4e0811a1), 21);
+  MD5STEP(F4, a, b, c, d, (in[4] + 0xf7537e82), 6);
+  MD5STEP(F4, d, a, b, c, (in[11] + 0xbd3af235), 10);
+  MD5STEP(F4, c, d, a, b, (in[2] + 0x2ad7d2bb), 15);
+  MD5STEP(F4, b, c, d, a, (in[9] + 0xeb86d391), 21);
 
   buf[0] += a;
   buf[1] += b;
@@ -2231,7 +2231,7 @@ static void MD5Final(unsigned char digest[16], MD5_CTX *ctx) {
 static void bin2str(char *to, const unsigned char *p, size_t len) {
   static const char *hex = "0123456789abcdef";
 
-  for (; len--; p++) {
+  for (; len--; p++) { //lint !e441 irregularities in statements used
     *to++ = hex[p[0] >> 4];
     *to++ = hex[p[0] & 0x0f];
   }
@@ -2390,7 +2390,7 @@ static char *mg_fgets(char *buf, size_t size, struct file *filep, char **p) {
   size_t len;
 
   if (filep->membuf != NULL && *p != NULL) {
-    eof = memchr(*p, '\n', &filep->membuf[filep->size] - *p);
+    eof = (char*)memchr(*p, '\n', &filep->membuf[filep->size] - *p);
     len = (size_t) (eof - *p) > size - 1 ? size - 1 : (size_t) (eof - *p);
     memcpy(buf, *p, len);
     buf[len] = '\0';
@@ -2758,7 +2758,7 @@ struct dir_scan_data {
 static void *realloc2(void *ptr, size_t size) {
   void *new_ptr = realloc(ptr, size);
   if (new_ptr == NULL) {
-    free(ptr);
+    free(ptr); //lint !e449 deallocated pointer from realloc
   }
   return new_ptr;
 }
@@ -4553,7 +4553,7 @@ static int set_ports_option(struct mg_context *ctx) {
           (int) vec.len, vec.ptr, strerror(ERRNO));
       closesocket(so.sock);
       success = 0;
-    } else if ((ptr = realloc(ctx->listening_sockets,
+    } else if ((ptr = (struct socket *)realloc(ctx->listening_sockets,
                               (ctx->num_listening_sockets + 1) *
                               sizeof(ctx->listening_sockets[0]))) == NULL) {
       closesocket(so.sock);
@@ -5071,7 +5071,7 @@ static int consume_socket(struct mg_context *ctx, struct socket *sp) {
 }
 
 static void *worker_thread(void *thread_func_param) {
-  struct mg_context *ctx = thread_func_param;
+  struct mg_context *ctx = (struct mg_context *)thread_func_param;
   struct mg_connection *conn;
 
   conn = (struct mg_connection *) calloc(1, sizeof(*conn) + MAX_REQUEST_SIZE);
@@ -5186,7 +5186,7 @@ static void accept_new_connection(const struct socket *listener,
 }
 
 static void *master_thread(void *thread_func_param) {
-  struct mg_context *ctx = thread_func_param;
+  struct mg_context *ctx = (struct mg_context *)thread_func_param;
   struct pollfd *pfd;
   int i;
 
@@ -5201,7 +5201,7 @@ static void *master_thread(void *thread_func_param) {
   pthread_setschedparam(pthread_self(), SCHED_RR, &sched_param);
 #endif
 
-  pfd = calloc(ctx->num_listening_sockets, sizeof(pfd[0]));
+  pfd = (struct pollfd *)calloc(ctx->num_listening_sockets, sizeof(pfd[0]));
   while (pfd != NULL && ctx->stop_flag == 0) {
     for (i = 0; i < ctx->num_listening_sockets; i++) {
       pfd[i].fd = ctx->listening_sockets[i].sock;

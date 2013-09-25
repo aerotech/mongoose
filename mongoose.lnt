@@ -1,0 +1,15 @@
+
+
+// turn off for clause irregularity
+-esym(123, F1)
+-esym(123, F2)
+-esym(123, F3)
+-esym(123, F4)
+
+// turn off declaration of symbol hides the symbol (TODO: fix?)
+-esym(578, usa)
+-esym(578, vec)
+-esym(578, file)
+-esym(578, ah)
+-esym(578, de)
+
