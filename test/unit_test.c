@@ -22,13 +22,28 @@
 
 #define USE_WEBSOCKET
 #define USE_LUA
+
+#ifndef _WIN32
+#define __cdecl
+#define USE_IPV6
+#endif
+
+// USE_* definitions must be made before #include "mongoose.c" !
+
 #include "mongoose.c"
 
-#define FATAL(str, line) do {                     \
+static int s_total_tests = 0;
+static int s_failed_tests = 0;
+
+#define FAIL(str, line) do {                     \
   printf("Fail on line %d: [%s]\n", line, str);   \
-  abort();                                        \
+  s_failed_tests++; \
 } while (0)
-#define ASSERT(expr) do { if (!(expr)) FATAL(#expr, __LINE__); } while (0)
+
+#define ASSERT(expr) do { \
+  s_total_tests++; \
+  if (!(expr)) FAIL(#expr, __LINE__); \
+} while (0)
 
 #define HTTP_PORT "56789"
 #define HTTPS_PORT "56790"
@@ -37,10 +52,6 @@
   "127.0.0.1:" HTTP_PORT "r"    \
   ",127.0.0.1:" HTTPS_PORT "s"  \
   ",127.0.0.1:" HTTP_PORT2
-
-#ifndef _WIN32
-#define __cdecl
-#endif
 
 static void test_parse_http_message() {
   struct mg_request_info ri;
@@ -52,6 +63,10 @@ static void test_parse_http_message() {
   char req6[] = "G";
   char req7[] = " blah ";
   char req8[] = " HTTP/1.1 200 OK \n\n";
+  char req9[] = "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n";
+
+  ASSERT(parse_http_message(req9, sizeof(req9), &ri) == sizeof(req9) - 1);
+  ASSERT(ri.num_headers == 1);
 
   ASSERT(parse_http_message(req1, sizeof(req1), &ri) == sizeof(req1) - 1);
   ASSERT(strcmp(ri.http_version, "1.1") == 0);
@@ -147,7 +162,8 @@ static void test_match_prefix(void) {
   ASSERT(match_prefix("*", 1, "/hello/") == 0);
   ASSERT(match_prefix("**.a$|**.b$", 11, "/a/b.b/") == -1);
   ASSERT(match_prefix("**.a$|**.b$", 11, "/a/b.b") == 6);
-  ASSERT(match_prefix("**.a$|**.b$", 11, "/a/b.a") == 6);
+  ASSERT(match_prefix("**.a$|**.b$", 11, "/a/B.A") == 6);
+  ASSERT(match_prefix("**o$", 4, "HELLO") == 5);
 }
 
 static void test_remove_double_dots() {
@@ -187,6 +203,7 @@ static char *read_file(const char *path, int *size) {
 static const char *fetch_data = "hello world!\n";
 static const char *inmemory_file_data = "hi there";
 static const char *upload_filename = "upload_test.txt";
+static const char *upload_filename2 = "upload_test2.txt";
 static const char *upload_ok_message = "upload successful";
 
 static const char *open_file_cb(const struct mg_connection *conn,
@@ -200,16 +217,39 @@ static const char *open_file_cb(const struct mg_connection *conn,
 }
 
 static void upload_cb(struct mg_connection *conn, const char *path) {
+  const struct mg_request_info *ri = mg_get_request_info(conn);
   char *p1, *p2;
   int len1, len2;
 
-  ASSERT(!strcmp(path, "./upload_test.txt"));
-  ASSERT((p1 = read_file("mongoose.c", &len1)) != NULL);
-  ASSERT((p2 = read_file(path, &len2)) != NULL);
-  ASSERT(len1 == len2);
-  ASSERT(memcmp(p1, p2, len1) == 0);
-  free(p1), free(p2);
-  remove(upload_filename);
+  if (atoi(ri->query_string) == 1) {
+    ASSERT(!strcmp(path, "./upload_test.txt"));
+    ASSERT((p1 = read_file("main.c", &len1)) != NULL);
+    ASSERT((p2 = read_file(path, &len2)) != NULL);
+    ASSERT(len1 == len2);
+    ASSERT(memcmp(p1, p2, len1) == 0);
+    free(p1), free(p2);
+    remove(upload_filename);
+  } else if (atoi(ri->query_string) == 2) {
+    if (!strcmp(path, "./upload_test.txt")) {
+      ASSERT((p1 = read_file("lua_5.2.1.h", &len1)) != NULL);
+      ASSERT((p2 = read_file(path, &len2)) != NULL);
+      ASSERT(len1 == len2);
+      ASSERT(memcmp(p1, p2, len1) == 0);
+      free(p1), free(p2);
+      remove(upload_filename);
+    } else if (!strcmp(path, "./upload_test2.txt")) {
+      ASSERT((p1 = read_file("mod_lua.c", &len1)) != NULL);
+      ASSERT((p2 = read_file(path, &len2)) != NULL);
+      ASSERT(len1 == len2);
+      ASSERT(memcmp(p1, p2, len1) == 0);
+      free(p1), free(p2);
+      remove(upload_filename);
+    } else {
+      ASSERT(0);
+    }
+  } else {
+    ASSERT(0);
+  }
 
   mg_printf(conn, "HTTP/1.0 200 OK\r\nContent-Length: %d\r\n\r\n%s",
             (int) strlen(upload_ok_message), upload_ok_message);
@@ -220,14 +260,15 @@ static int begin_request_handler_cb(struct mg_connection *conn) {
 
   if (!strcmp(ri->uri, "/data")) {
     mg_printf(conn, "HTTP/1.1 200 OK\r\n"
-              "Content-Length: %d\r\n"
               "Content-Type: text/plain\r\n\r\n"
-              "%s", (int) strlen(fetch_data), fetch_data);
+              "%s", fetch_data);
+    close_connection(conn);
     return 1;
   }
 
   if (!strcmp(ri->uri, "/upload")) {
-    ASSERT(mg_upload(conn, ".") == 1);
+    ASSERT(ri->query_string != NULL);
+    ASSERT(mg_upload(conn, ".") == atoi(ri->query_string));
   }
 
   return 0;
@@ -241,14 +282,14 @@ static int log_message_cb(const struct mg_connection *conn, const char *msg) {
 
 static const struct mg_callbacks CALLBACKS = {
   &begin_request_handler_cb, NULL, &log_message_cb, NULL, NULL, NULL, NULL,
-  &open_file_cb, NULL, &upload_cb, NULL
+  &open_file_cb, NULL, &upload_cb, NULL, NULL
 };
 
 static const char *OPTIONS[] = {
   "document_root", ".",
   "listening_ports", LISTENING_ADDR,
   "enable_keep_alive", "yes",
-  "ssl_certificate", "build/ssl_cert.pem",
+  "ssl_certificate", "ssl_cert.pem",
   NULL,
 };
 
@@ -287,16 +328,17 @@ static void test_mg_download(void) {
                              "GET / HTTP/1.0\r\n\r\n")) != NULL);
   mg_close_connection(conn);
 
-  // Fetch mongoose.c, should succeed
+  // Fetch main.c, should succeed
   ASSERT((conn = mg_download("localhost", port, 1, ebuf, sizeof(ebuf), "%s",
-                             "GET /mongoose.c HTTP/1.0\r\n\r\n")) != NULL);
+                             "GET /main.c HTTP/1.0\r\n\r\n")) != NULL);
   ASSERT(!strcmp(conn->request_info.uri, "200"));
   ASSERT((p1 = read_conn(conn, &len1)) != NULL);
-  ASSERT((p2 = read_file("mongoose.c", &len2)) != NULL);
+  ASSERT((p2 = read_file("main.c", &len2)) != NULL);
   ASSERT(len1 == len2);
   ASSERT(memcmp(p1, p2, len1) == 0);
   free(p1), free(p2);
   mg_close_connection(conn);
+
 
   // Fetch in-memory file, should succeed.
   ASSERT((conn = mg_download("localhost", port, 1, ebuf, sizeof(ebuf), "%s",
@@ -304,6 +346,15 @@ static void test_mg_download(void) {
   ASSERT((p1 = read_conn(conn, &len1)) != NULL);
   ASSERT(len1 == (int) strlen(inmemory_file_data));
   ASSERT(memcmp(p1, inmemory_file_data, len1) == 0);
+  free(p1);
+  mg_close_connection(conn);
+
+  // Fetch in-memory data with no Content-Length, should succeed.
+  ASSERT((conn = mg_download("localhost", port, 1, ebuf, sizeof(ebuf), "%s",
+                             "GET /data HTTP/1.1\r\n\r\n")) != NULL);
+  ASSERT((p1 = read_conn(conn, &len1)) != NULL);
+  ASSERT(len1 == (int) strlen(fetch_data));
+  ASSERT(memcmp(p1, fetch_data, len1) == 0);
   free(p1);
   mg_close_connection(conn);
 
@@ -338,24 +389,27 @@ static void test_mg_upload(void) {
   static const char *boundary = "OOO___MY_BOUNDARY___OOO";
   struct mg_context *ctx;
   struct mg_connection *conn;
-  char ebuf[100], buf[20], *file_data, *post_data = NULL;
-  int file_len, post_data_len;
+  char ebuf[100], buf[20], *file_data, *file2_data, *post_data;
+  int file_len, file2_len, post_data_len;
 
   ASSERT((ctx = mg_start(&CALLBACKS, NULL, OPTIONS)) != NULL);
-  ASSERT((file_data = read_file("mongoose.c", &file_len)) != NULL);
+
+  // Upload one file
+  ASSERT((file_data = read_file("main.c", &file_len)) != NULL);
+  post_data = NULL;
   post_data_len = alloc_printf(&post_data, 0,
                                        "--%s\r\n"
                                        "Content-Disposition: form-data; "
                                        "name=\"file\"; "
                                        "filename=\"%s\"\r\n\r\n"
                                        "%.*s\r\n"
-                                       "--%s\r\n",
+                                       "--%s--\r\n",
                                        boundary, upload_filename,
                                        file_len, file_data, boundary);
   ASSERT(post_data_len > 0);
   ASSERT((conn = mg_download("localhost", atoi(HTTPS_PORT), 1,
                              ebuf, sizeof(ebuf),
-                             "POST /upload HTTP/1.1\r\n"
+                             "POST /upload?1 HTTP/1.1\r\n"
                              "Content-Length: %d\r\n"
                              "Content-Type: multipart/form-data; "
                              "boundary=%s\r\n\r\n"
@@ -365,6 +419,47 @@ static void test_mg_upload(void) {
   ASSERT(mg_read(conn, buf, sizeof(buf)) == (int) strlen(upload_ok_message));
   ASSERT(memcmp(buf, upload_ok_message, strlen(upload_ok_message)) == 0);
   mg_close_connection(conn);
+
+  // Upload two files
+  ASSERT((file_data = read_file("lua_5.2.1.h", &file_len)) != NULL);
+  ASSERT((file2_data = read_file("mod_lua.c", &file2_len)) != NULL);
+  post_data = NULL;
+  post_data_len = alloc_printf(&post_data, 0,
+                               // First file
+                               "--%s\r\n"
+                               "Content-Disposition: form-data; "
+                               "name=\"file\"; "
+                               "filename=\"%s\"\r\n\r\n"
+                               "%.*s\r\n"
+
+                               // Second file
+                               "--%s\r\n"
+                               "Content-Disposition: form-data; "
+                               "name=\"file\"; "
+                               "filename=\"%s\"\r\n\r\n"
+                               "%.*s\r\n"
+
+                               // Final boundary
+                               "--%s--\r\n",
+                               boundary, upload_filename,
+                               file_len, file_data,
+                               boundary, upload_filename2,
+                               file2_len, file2_data,
+                               boundary);
+  ASSERT(post_data_len > 0);
+  ASSERT((conn = mg_download("localhost", atoi(HTTPS_PORT), 1,
+                             ebuf, sizeof(ebuf),
+                             "POST /upload?2 HTTP/1.1\r\n"
+                             "Content-Length: %d\r\n"
+                             "Content-Type: multipart/form-data; "
+                             "boundary=%s\r\n\r\n"
+                             "%.*s", post_data_len, boundary,
+                             post_data_len, post_data)) != NULL);
+  free(file_data), free(file2_data), free(post_data);
+  ASSERT(mg_read(conn, buf, sizeof(buf)) == (int) strlen(upload_ok_message));
+  ASSERT(memcmp(buf, upload_ok_message, strlen(upload_ok_message)) == 0);
+  mg_close_connection(conn);
+
   mg_stop(ctx);
 }
 
@@ -467,13 +562,13 @@ static void test_lua(void) {
   ASSERT(lua_gettop(L) == 0);
 
   check_lua_expr(L, "'hi'", "hi");
-  check_lua_expr(L, "request_info.request_method", "POST");
-  check_lua_expr(L, "request_info.uri", "/foo/bar");
-  check_lua_expr(L, "request_info.num_headers", "2");
-  check_lua_expr(L, "request_info.remote_ip", "0");
-  check_lua_expr(L, "request_info.http_headers['Content-Length']", "12");
-  check_lua_expr(L, "request_info.http_headers['Connection']", "close");
-  (void) luaL_dostring(L, "post = read()");
+  check_lua_expr(L, "mg.request_info.request_method", "POST");
+  check_lua_expr(L, "mg.request_info.uri", "/foo/bar");
+  check_lua_expr(L, "mg.request_info.num_headers", "2");
+  check_lua_expr(L, "mg.request_info.remote_ip", "0");
+  check_lua_expr(L, "mg.request_info.http_headers['Content-Length']", "12");
+  check_lua_expr(L, "mg.request_info.http_headers['Connection']", "close");
+  (void) luaL_dostring(L, "post = mg.read()");
   check_lua_expr(L, "# post", "12");
   check_lua_expr(L, "post", "hello world!");
   lua_close(L);
@@ -580,23 +675,23 @@ static void test_api_calls(void) {
 static void test_url_decode(void) {
   char buf[100];
 
-  ASSERT(url_decode("foo", 3, buf, 3, 0) == -1);  // No space for terminating \0
-  ASSERT(url_decode("foo", 3, buf, 4, 0) == 3);
+  ASSERT(mg_url_decode("foo", 3, buf, 3, 0) == -1);  // No space for \0
+  ASSERT(mg_url_decode("foo", 3, buf, 4, 0) == 3);
   ASSERT(strcmp(buf, "foo") == 0);
 
-  ASSERT(url_decode("a+", 2, buf, sizeof(buf), 0) == 2);
+  ASSERT(mg_url_decode("a+", 2, buf, sizeof(buf), 0) == 2);
   ASSERT(strcmp(buf, "a+") == 0);
 
-  ASSERT(url_decode("a+", 2, buf, sizeof(buf), 1) == 2);
+  ASSERT(mg_url_decode("a+", 2, buf, sizeof(buf), 1) == 2);
   ASSERT(strcmp(buf, "a ") == 0);
 
-  ASSERT(url_decode("%61", 1, buf, sizeof(buf), 1) == 1);
+  ASSERT(mg_url_decode("%61", 1, buf, sizeof(buf), 1) == 1);
   ASSERT(strcmp(buf, "%") == 0);
 
-  ASSERT(url_decode("%61", 2, buf, sizeof(buf), 1) == 2);
+  ASSERT(mg_url_decode("%61", 2, buf, sizeof(buf), 1) == 2);
   ASSERT(strcmp(buf, "%6") == 0);
 
-  ASSERT(url_decode("%61", 3, buf, sizeof(buf), 1) == 1);
+  ASSERT(mg_url_decode("%61", 3, buf, sizeof(buf), 1) == 1);
   ASSERT(strcmp(buf, "a") == 0);
 }
 
@@ -625,7 +720,44 @@ static void test_mg_get_cookie(void) {
   ASSERT(mg_get_cookie("a=1; b=2; c; d", "c", buf, sizeof(buf)) == -1);
 }
 
+static void test_strtoll(void) {
+  ASSERT(strtoll("0", NULL, 10) == 0);
+  ASSERT(strtoll("123", NULL, 10) == 123);
+  ASSERT(strtoll("-34", NULL, 10) == -34);
+  ASSERT(strtoll("3566626116", NULL, 10) == 3566626116);
+}
+
+static void test_parse_port_string(void) {
+  static const char *valid[] = {
+    "1", "1s", "1r", "1.2.3.4:1", "1.2.3.4:1s", "1.2.3.4:1r",
+#if defined(USE_IPV6)
+    "[::1]:123", "[3ffe:2a00:100:7031::1]:900",
+#endif
+    NULL
+  };
+  static const char *invalid[] = {
+    "0", "99999", "1k", "1.2.3", "1.2.3.4:", "1.2.3.4:2p",
+    NULL
+  };
+  struct socket so;
+  struct vec vec;
+  int i;
+
+  for (i = 0; valid[i] != NULL; i++) {
+    vec.ptr = valid[i];
+    vec.len = strlen(vec.ptr);
+    ASSERT(parse_port_string(&vec, &so) != 0);
+  }
+
+  for (i = 0; invalid[i] != NULL; i++) {
+    vec.ptr = invalid[i];
+    vec.len = strlen(vec.ptr);
+    ASSERT(parse_port_string(&vec, &so) == 0);
+  }
+}
+
 int __cdecl main(void) {
+  test_parse_port_string();
   test_mg_strcasestr();
   test_alloc_vprintf();
   test_base64_encode();
@@ -644,10 +776,12 @@ int __cdecl main(void) {
   test_api_calls();
   test_url_decode();
   test_mg_get_cookie();
+  test_strtoll();
 #ifdef USE_LUA
   test_lua();
 #endif
 
-  printf("%s\n", "PASSED");
-  return 0;
+  printf("TOTAL TESTS: %d, FAILED: %d\n", s_total_tests, s_failed_tests);
+
+  return s_failed_tests == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
