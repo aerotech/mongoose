@@ -17,3 +17,6 @@
 -efunc(454, ssl_locking_callback)
 -efunc(455, ssl_locking_callback)
 -efunc(456, ssl_locking_callback)
+
+// turn off some stuff relating to variable argument stuff
+-esym(530, ap_copy)

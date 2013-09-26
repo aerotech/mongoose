@@ -2238,7 +2238,7 @@ static void bin2str(char *to, const unsigned char *p, size_t len) {
   *to = '\0';
 }
 
-// Return stringified MD5 hash for list of strings. Buffer must be 33 bytes.
+// Return stringified MD5 hash for list of strings. Buffer must be 33 bytes.  Last argument must be NULL.
 char *mg_md5(char buf[33], ...) {
   unsigned char hash[16];
   const char *p;
@@ -2248,7 +2248,7 @@ char *mg_md5(char buf[33], ...) {
   MD5Init(&ctx);
 
   va_start(ap, buf);
-  while ((p = va_arg(ap, const char *)) != NULL) {
+  while ((p = va_arg(ap, const char *)) != NULL) { //lint !e124 NULL has to be passed in as last argument
     MD5Update(&ctx, (const unsigned char *) p, (unsigned) strlen(p));
   }
   va_end(ap);
@@ -4285,7 +4285,7 @@ int mg_upload(struct mg_connection *conn, const char *destination_dir) {
 
     // Move data to the beginning of the buffer
     assert(len >= headers_len);
-    memmove(buf, &buf[headers_len], len - headers_len);
+    memmove(buf, &buf[headers_len], len - headers_len); //lint !e670 lint assumes buf needs '\0' at end
     len -= headers_len;
 
     // We open the file with exclusive lock held. This guarantee us
