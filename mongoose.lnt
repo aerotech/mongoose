@@ -6,13 +6,6 @@
 -esym(123, F3)
 -esym(123, F4)
 
-// turn off declaration of symbol hides the symbol (TODO: fix?)
--esym(578, usa)
--esym(578, vec)
--esym(578, file)
--esym(578, ah)
--esym(578, de)
-
 // turn off thread mutex has been locked but not unlocked, and vice verse
 -efunc(454, ssl_locking_callback)
 -efunc(455, ssl_locking_callback)

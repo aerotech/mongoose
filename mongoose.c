@@ -3804,7 +3804,7 @@ static void handle_propfind(struct mg_connection *conn, const char *path,
   if (filep->is_directory &&
       !mg_strcasecmp(conn->ctx->config[ENABLE_DIRECTORY_LISTING], "yes") &&
       (depth == NULL || strcmp(depth, "0") != 0)) {
-    scan_directory(conn, path, conn, &print_dav_dir_entry);
+    scan_directory(conn, path, conn, print_dav_dir_entry);
   }
 
   conn->num_bytes_sent += mg_printf(conn, "%s\n", "</d:multistatus>");
@@ -4780,8 +4780,8 @@ static int set_ssl_option(struct mg_context *ctx) {
     pthread_mutex_init(&ssl_mutexes[i], NULL);
   }
 
-  CRYPTO_set_locking_callback(&ssl_locking_callback);
-  CRYPTO_set_id_callback(&ssl_id_callback);
+  CRYPTO_set_locking_callback(ssl_locking_callback);
+  CRYPTO_set_id_callback(ssl_id_callback);
 
   return 1;
 }
