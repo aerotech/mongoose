@@ -1,5 +1,6 @@
-#include "lua_5.2.1.h"
+#include "internal.h"
 
+#ifdef USE_LUA
 #ifdef _WIN32
 static void *mmap(void *addr, int64_t len, int prot, int flags, int fd,
                   int offset) {
@@ -20,7 +21,6 @@ static void *mmap(void *addr, int64_t len, int prot, int flags, int fd,
 static const char *LUASOCKET = "luasocket";
 
 // Forward declarations
-static void handle_request(struct mg_connection *);
 static int handle_lsp_request(struct mg_connection *, const char *,
                               struct file *, struct lua_State *);
 
@@ -242,7 +242,7 @@ static int lsp_redirect(lua_State *L) {
 }
 
 static void prepare_lua_environment(struct mg_connection *conn, lua_State *L) {
-  const struct mg_request_info *ri = mg_get_request_info(conn);
+  const struct mg_request_info *ri = &conn->request_info;
   extern void luaL_openlibs(lua_State *);
   int i;
 
@@ -361,32 +361,30 @@ static int handle_lsp_request(struct mg_connection *conn, const char *path,
                                struct file *filep, struct lua_State *ls) {
   void *p = NULL;
   lua_State *L = NULL;
+  FILE *fp = NULL;
   int error = 1;
 
   // We need both mg_stat to get file size, and mg_fopen to get fd
-  if (!mg_stat(conn, path, filep) || !mg_fopen(conn, path, "r", filep)) {
+  if (!mg_stat(path, filep) || (fp = mg_fopen(path, "r")) == NULL) {
     lsp_send_err(conn, ls, "File [%s] not found", path);
-  } else if (filep->membuf == NULL &&
-             (p = mmap(NULL, (size_t) filep->size, PROT_READ, MAP_PRIVATE,
-                       fileno(filep->fp), 0)) == MAP_FAILED) {
+  } else if ((p = mmap(NULL, (size_t) filep->size, PROT_READ, MAP_PRIVATE,
+                       fileno(fp), 0)) == MAP_FAILED) {
     lsp_send_err(conn, ls, "mmap(%s, %zu, %d): %s", path, (size_t) filep->size,
-              fileno(filep->fp), strerror(errno));
+              fileno(fp), strerror(errno));
   } else if ((L = ls != NULL ? ls : luaL_newstate()) == NULL) {
     send_http_error(conn, 500, http_500_error, "%s", "luaL_newstate failed");
   } else {
     // We're not sending HTTP headers here, Lua page must do it.
     if (ls == NULL) {
       prepare_lua_environment(conn, L);
-      if (conn->ctx->callbacks.init_lua != NULL) {
-        conn->ctx->callbacks.init_lua(conn, L);
-      }
     }
-    error = lsp(conn, path, filep->membuf == NULL ? p : filep->membuf,
-                filep->size, L);
+    error = lsp(conn, path, p, filep->size, L);
   }
 
   if (L != NULL && ls == NULL) lua_close(L);
   if (p != NULL) munmap(p, filep->size);
-  mg_fclose(filep);
+  fclose(fp);
+
   return error;
 }
+#endif // USE_LUA

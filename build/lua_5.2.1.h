@@ -8,9 +8,10 @@
 #ifndef lconfig_h
 #define lconfig_h
 
+#define _XOPEN_SOURCE 600  // Makes it compile under linux
+
 #include <limits.h>
 #include <stddef.h>
-
 
 /*
 ** ==================================================================
@@ -18,6 +19,7 @@
 ** ===================================================================
 */
 
+#define LUA_COMPAT_ALL
 
 /*
 @@ LUA_ANSI controls the use of non-ansi features.
@@ -38,8 +40,6 @@
 #define LUA_USE_AFORMAT		/* assume 'printf' handles 'aA' specifiers */
 #endif
 
-
-
 #if defined(LUA_USE_LINUX)
 #define LUA_USE_POSIX
 #define LUA_USE_DLOPEN		/* needs an extra library: -ldl */
@@ -59,6 +59,10 @@
 #endif
 
 
+#if defined(__posix) || defined(__linux) || \
+  defined(__unix) || defined(__APPLE__)
+#define LUA_USE_POSIX
+#endif
 
 /*
 @@ LUA_USE_POSIX includes all functionality listed as X/Open System
