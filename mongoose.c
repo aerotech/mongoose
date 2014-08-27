@@ -22,6 +22,9 @@
 #if !defined(_CRT_SECURE_NO_WARNINGS)
 #define _CRT_SECURE_NO_WARNINGS // Disable deprecation warning in VS2005
 #endif
+#if !defined(_CRT_NONSTDC_NO_DEPRECATE)
+#define _CRT_NONSTDC_NO_DEPRECATE // Disable deprecated POSIX functions warning in VS2005
+#endif
 #else
 #ifdef __linux__
 #define _XOPEN_SOURCE 600     // For flockfile() on Linux
@@ -876,7 +879,8 @@ static const char *next_option(const char *list, struct vec *val,
 
 static int match_prefix(const char *pattern, unsigned int pattern_len, const char *str) {
   const char *or_str;
-  int i, j, len, res;
+  unsigned int i, j;
+  int len, res;
 
   if ((or_str = (const char *) memchr(pattern, '|', pattern_len)) != NULL) {
     res = match_prefix(pattern, or_str - pattern, str);
